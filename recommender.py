@@ -1,18 +1,3 @@
-"""
-Movie Recommendation System - ML class project
-Phase 1 (Week 3): rule-based genre-matching recommender (pure Python)
-Phase 2 (Week 4+): content-based similarity (TF-IDF + cosine) over genres,
-                   keywords, cast, studio, with a rating tie-breaker.
-
-Usage:
-  python recommender.py "The Lion King" "Frozen"
-  python recommender.py --method tfidf "The Lion King" "Frozen"
-  python recommender.py --method both "La La Land"
-  python recommender.py                      # interactive mode
-Data: uses tmdb_movies.csv (from fetch_tmdb.py) automatically if it exists,
-otherwise sample_movies.csv. Override with --data FILE.csv, or use the Kaggle
-TMDB 5000 files via --tmdb movies.csv credits.csv (see README).
-"""
 import argparse, csv, math, ast, os, difflib
 from collections import Counter
 
