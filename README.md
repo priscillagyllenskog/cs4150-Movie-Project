@@ -1,7 +1,3 @@
-# Movie Recommendation System
-
-Run: `python recommender.py "The Lion King" "Frozen"` (no installs needed, Python 3.8+).
-
 ## Week map
 - Week 1-2: `sample_movies.csv` is a small starter set. For the real project, download the
   **TMDB 5000 Movie Dataset** (Kaggle) and run

@@ -1,23 +1,3 @@
-"""
-Download a movie catalog from the TMDB API into a CSV that recommender.py can read.
-
-Setup (each teammate, once):
-  1. Create a free TMDB account and copy your "API Read Access Token"
-     (Settings -> API).
-  2. Set it as an environment variable. Never paste it into code or commit it.
-       macOS/Linux:  export TMDB_TOKEN="your_token"
-       Windows PS:   $env:TMDB_TOKEN="your_token"
-  3. pip install requests
-
-Usage:
-  python fetch_tmdb.py                         # ~200 popular movies -> tmdb_movies.csv
-  python fetch_tmdb.py --pages 25              # ~500 movies
-  python fetch_tmdb.py --source top_rated --out top.csv
-Then:
-  python recommender.py --data tmdb_movies.csv "Inception"
-
-This product uses the TMDB API but is not endorsed or certified by TMDB.
-"""
 import argparse, csv, os, sys, time
 import requests
 

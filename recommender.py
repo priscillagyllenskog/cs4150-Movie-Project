@@ -9,26 +9,36 @@ Usage:
   python recommender.py --method tfidf "The Lion King" "Frozen"
   python recommender.py --method both "La La Land"
   python recommender.py                      # interactive mode
-Dataset: sample_movies.csv (pipe-separated list fields), or the TMDB 5000
-CSVs via --tmdb movies.csv credits.csv (see README).
+Data: uses tmdb_movies.csv (from fetch_tmdb.py) automatically if it exists,
+otherwise sample_movies.csv. Override with --data FILE.csv, or use the Kaggle
+TMDB 5000 files via --tmdb movies.csv credits.csv (see README).
 """
-import argparse, csv, json, math, ast
+import argparse, csv, math, ast, os, difflib
 from collections import Counter
 
 # ---------------------------------------------------------------- loading
-def load_sample(path="sample_movies.csv"):
+def load_csv(path="sample_movies.csv"):
+    """Reads sample_movies.csv or the tmdb_movies.csv written by fetch_tmdb.py."""
     movies = []
-    with open(path, newline="", encoding="utf-8") as f:
+    with open(path, newline="", encoding="utf-8-sig") as f:
         for r in csv.DictReader(f):
+            if not (r.get("title") or "").strip():
+                continue
+            try:
+                rating = float(r["rating"]) if r.get("rating") else None
+            except ValueError:
+                rating = None
             movies.append({
                 "title": r["title"].strip(),
-                "genres": [g for g in r["genres"].split("|") if g],
-                "keywords": [k for k in r["keywords"].split("|") if k],
-                "cast": [c for c in r["cast"].split("|") if c],
-                "studio": r["studio"].strip(),
-                "rating": float(r["rating"]) if r["rating"] else None,
+                "genres": [g for g in (r.get("genres") or "").split("|") if g],
+                "keywords": [k for k in (r.get("keywords") or "").split("|") if k],
+                "cast": [c for c in (r.get("cast") or "").split("|") if c],
+                "studio": (r.get("studio") or "").strip(),
+                "rating": rating,
             })
     return clean(movies)
+
+load_sample = load_csv   # old name, kept so test_edge_cases.py still works
 
 def _names(s, limit=None):
     try:
@@ -69,12 +79,21 @@ def clean(movies):
     return out
 
 def find(movies, title):
+    """Exact (case-insensitive) match, else a unique partial match, else None."""
     t = title.strip().lower()
     for m in movies:
         if m["title"].lower() == t:
             return m
     hits = [m for m in movies if t in m["title"].lower()]
     return hits[0] if len(hits) == 1 else None
+
+def suggest(movies, title, n=3):
+    """Closest titles, for 'did you mean' messages."""
+    t = title.strip().lower()
+    partial = [m["title"] for m in movies if t in m["title"].lower()]
+    if partial:
+        return partial[:n]
+    return difflib.get_close_matches(title, [m["title"] for m in movies], n=n, cutoff=0.6)
 
 # ------------------------------------------------- phase 1: genre matching
 def recommend_genre(movies, liked, k=5):
@@ -155,12 +174,19 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("titles", nargs="*", help="liked movie titles")
     ap.add_argument("--method", choices=["genre", "tfidf", "both"], default="both")
-    ap.add_argument("--data", default="sample_movies.csv")
+    ap.add_argument("--data", default=None,
+                    help="CSV to use (default: tmdb_movies.csv if it exists, else sample_movies.csv)")
     ap.add_argument("--tmdb", nargs=2, metavar=("MOVIES_CSV", "CREDITS_CSV"))
     ap.add_argument("-k", type=int, default=5)
     a = ap.parse_args()
 
-    movies = load_tmdb(*a.tmdb) if a.tmdb else load_sample(a.data)
+    if a.tmdb:
+        movies, source = load_tmdb(*a.tmdb), "TMDB 5000 files"
+    else:
+        path = a.data or ("tmdb_movies.csv" if os.path.exists("tmdb_movies.csv")
+                          else "sample_movies.csv")
+        movies, source = load_csv(path), path
+    print(f"Loaded {len(movies)} movies from {source}")
     titles = a.titles or [t.strip() for t in
                           input("Liked movies (comma-separated): ").split(",") if t.strip()]
     liked, unknown = [], []
@@ -170,8 +196,9 @@ def main():
             liked.append(m)
         elif not m:
             unknown.append(t)
-    if unknown:
-        print("Not found in dataset (skipped):", ", ".join(unknown))
+    for t in unknown:
+        tips = suggest(movies, t)
+        print(f'Not found: "{t}"' + (f" -- did you mean: {', '.join(tips)}?" if tips else ""))
     if not liked:
         print("None of the movies were found; try different titles.")
         return
